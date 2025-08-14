@@ -148,6 +148,7 @@ add_executable(AngelAuraAmethyst
   GameSurfaceView.m
   JavaGUIViewController.m
   LauncherMenuViewController.m
+  LauncherLogAnalyzerViewController.m
   LauncherNavigationController.m
   LauncherNewsViewController.m
   LauncherPreferences.m
