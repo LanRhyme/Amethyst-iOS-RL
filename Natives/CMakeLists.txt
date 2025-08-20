@@ -7,6 +7,7 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/config.h.in ${CMAKE_CURRENT_LIST_DIR}/c
 # and instead overrides it with the macOS SDK version when compiled
 # in Xcode on a Mac.
 set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0)
+set(CMAKE_OSX_ARCHITECTURES "arm64")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-ios -mcpu=apple-a8 -fcommon -fobjc-arc -ObjC -F'${CMAKE_OSX_SYSROOT}/System/Cryptexes/OS/System/Library/Frameworks'")
 set(CMAKE_C_FLAGS_DEBUG "-funwind-tables -g")
