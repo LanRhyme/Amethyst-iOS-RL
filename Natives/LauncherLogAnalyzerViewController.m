@@ -13,7 +13,7 @@ UIEdgeInsets insets;
 
 - (id)init {
     self = [super init];
-    self.title = localize(@"Log Analyzer", nil);
+    self.title = localize(@"📄日志分析器", nil);
     return self;
 }
 

@@ -95,9 +95,9 @@
     // Download base json
     NSString *versionStr = version[@"id"];
     if ([versionStr isEqualToString:@"latest-release"]) {
-        versionStr = getPrefObject(@"internal.latest_version.release"];
+        versionStr = getPrefObject(@"internal.latest_version.release");
     } else if ([versionStr isEqualToString:@"latest-snapshot"]) {
-        versionStr = getPrefObject(@"internal.latest_version.snapshot"];
+        versionStr = getPrefObject(@"internal.latest_version.snapshot");
     }
 
     NSString *path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), versionStr];
