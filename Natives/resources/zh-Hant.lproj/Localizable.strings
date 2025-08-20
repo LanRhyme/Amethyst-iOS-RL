@@ -101,6 +101,8 @@
 "Settings" = "設定";
 
 "preference.section.general" = "一般設定";
+"preference.section.network" = "網路設定";
+"preference.section.footer.network" = "若下載速度慢，請嘗試切換鏡像來源。";
 "preference.section.video" = "動畫設定";
 "preference.section.control" = "自定控制鍵";
 "preference.section.debug" = "用戶界面除錯選項";
@@ -135,6 +137,11 @@
 "preference.title.reset_settings" = "重設所有設定";
 "preference.title.confirm.reset_settings" = "這會移除你所有的自定義偏好設定，包括解像度、按鈕大小和Java參數。";
 "preference.title.done.reset_settings" = "所有的預設設定已被回復。";
+
+"preference.title.download_source" = "下載來源";
+"preference.detail.download_source" = "選擇遊戲檔案的下載來源。";
+"preference.title.download_source-official" = "官方";
+"preference.title.download_source-bmclapi" = "BMCLAPI";
 
 "preference.title.renderer" = "渲染器";
 

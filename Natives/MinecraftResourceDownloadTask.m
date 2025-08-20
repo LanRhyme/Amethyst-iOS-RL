@@ -95,9 +95,9 @@
     // Download base json
     NSString *versionStr = version[@"id"];
     if ([versionStr isEqualToString:@"latest-release"]) {
-        versionStr = getPrefObject(@"internal.latest_version.release");
+        versionStr = getPrefObject(@"internal.latest_version.release"];
     } else if ([versionStr isEqualToString:@"latest-snapshot"]) {
-        versionStr = getPrefObject(@"internal.latest_version.snapshot");
+        versionStr = getPrefObject(@"internal.latest_version.snapshot"];
     }
 
     NSString *path = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("POJAV_GAME_DIR"), versionStr];
@@ -138,6 +138,11 @@
 
     versionStr = version[@"id"];
     NSString *url = version[@"url"];
+    NSString *downloadSource = getPrefObject(@"network.download_source");
+    if ([downloadSource isEqualToString:@"bmclapi"]) {
+        url = [url stringByReplacingOccurrencesOfString:@"launchermeta.mojang.com" withString:@"bmclapi2.bangbang93.com"];
+        url = [url stringByReplacingOccurrencesOfString:@"piston-meta.mojang.com" withString:@"bmclapi2.bangbang93.com"];
+    }
     NSString *sha = url.stringByDeletingLastPathComponent.lastPathComponent;
     NSUInteger size = [version[@"size"] unsignedLongLongValue];
 
@@ -156,6 +161,10 @@
     NSString *name = [NSString stringWithFormat:@"assets/indexes/%@.json", assetIndex[@"id"]];
     NSString *path = [@(getenv("POJAV_GAME_DIR")) stringByAppendingPathComponent:name];
     NSString *url = assetIndex[@"url"];
+    NSString *downloadSource = getPrefObject(@"network.download_source");
+    if ([downloadSource isEqualToString:@"bmclapi"]) {
+        url = [url stringByReplacingOccurrencesOfString:@"piston-assets.mojang.com" withString:@"bmclapi2.bangbang93.com"];
+    }
     NSString *sha = url.stringByDeletingLastPathComponent.lastPathComponent;
     NSUInteger size = [assetIndex[@"size"] unsignedLongLongValue];
     NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:sha altName:name toPath:path success:^{
@@ -167,6 +176,7 @@
 
 - (NSArray *)downloadClientLibraries {
     NSMutableArray *tasks = [NSMutableArray new];
+    NSString *downloadSource = getPrefObject(@"network.download_source");
     for (NSDictionary *library in self.metadata[@"libraries"]) {
         NSString *name = library[@"name"];
 
@@ -175,6 +185,9 @@
             NSLog(@"[MCDL] Unknown artifact object for %@, attempting to generate one", name);
             artifact = [[NSMutableDictionary alloc] init];
             NSString *prefix = library[@"url"] == nil ? @"https://libraries.minecraft.net/" : [library[@"url"] stringByReplacingOccurrencesOfString:@"http://" withString:@"https://"];
+            if ([downloadSource isEqualToString:@"bmclapi"]) {
+                prefix = @"https://bmclapi2.bangbang93.com/maven/";
+            }
             NSArray *libParts = [name componentsSeparatedByString:@":"];
             artifact[@"path"] = [NSString stringWithFormat:@"%1$@/%2$@/%3$@/%2$@-%3$@.jar", [libParts[0] stringByReplacingOccurrencesOfString:@"." withString:@"/"], libParts[1], libParts[2]];
             artifact[@"url"] = [NSString stringWithFormat:@"%@%@", prefix, artifact[@"path"]];
@@ -185,6 +198,9 @@
         NSString *sha = artifact[@"sha1"];
         NSUInteger size = [artifact[@"size"] unsignedLongLongValue];
         NSString *url = artifact[@"url"];
+        if ([downloadSource isEqualToString:@"bmclapi"]) {
+            url = [url stringByReplacingOccurrencesOfString:@"https://libraries.minecraft.net/" withString:@"https://bmclapi2.bangbang93.com/maven/"];
+        }
         if ([library[@"skip"] boolValue]) {
             NSLog(@"[MDCL] Skipped library %@", name);
             continue;
@@ -206,6 +222,7 @@
     if (!assets) {
         return @[];
     }
+    NSString *downloadSource = getPrefObject(@"network.download_source");
     for (NSString *name in assets[@"objects"]) {
         NSDictionary *object = assets[@"objects"][name];
         NSString *hash = object[@"hash"];
@@ -228,7 +245,12 @@
             continue;
         }
 
-        NSString *url = [NSString stringWithFormat:@"https://resources.download.minecraft.net/%@", pathname];
+        NSString *url;
+        if ([downloadSource isEqualToString:@"bmclapi"]) {
+            url = [NSString stringWithFormat:@"https://bmclapi2.bangbang93.com/assets/%@", pathname];
+        } else {
+            url = [NSString stringWithFormat:@"https://resources.download.minecraft.net/%@", pathname];
+        }
         NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:hash altName:name toPath:path success:nil];
         if (task) {
             [tasks addObject:task];

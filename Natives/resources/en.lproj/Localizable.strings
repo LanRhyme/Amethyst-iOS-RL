@@ -132,6 +132,8 @@
 "Settings" = "Settings";
 
 "preference.section.general" = "General Settings";
+"preference.section.network" = "Network Settings";
+"preference.section.footer.network" = "If the download speed is slow, try switching the mirror source.";
 "preference.section.video" = "Video and Audio Settings";
 "preference.section.footer.video" = "Auto renderer allows Amethyst to choose the best option based on Minecraft version. Decreasing resolution reduces GPU workload for better performance.";
 "preference.section.control" = "Control customization";
@@ -171,6 +173,11 @@
 "preference.title.erase_demo_data" = "Erase Demo game data";
 "preference.title.confirm.erase_demo_data" = "This will erase all Demo game versions and data used for Demo accounts.";
 "preference.title.done.erase_demo_data" = "All of the Demo game data has been erased.";
+
+"preference.title.download_source" = "Download Source";
+"preference.detail.download_source" = "Choose the download source for game files.";
+"preference.title.download_source-official" = "Official";
+"preference.title.download_source-bmclapi" = "BMCLAPI";
 
 "preference.title.renderer" = "Renderer";
 

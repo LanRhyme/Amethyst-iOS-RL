@@ -44,7 +44,7 @@
     self.hasDetail = YES;
     self.prefDetailVisible = self.navigationController == nil;
     
-    self.prefSections = @[@"general", @"video", @"control", @"java", @"debug"];
+    self.prefSections = @[@"general", @"network", @"video", @"control", @"java", @"debug"];
 
     self.rendererKeys = getRendererKeys(NO);
     self.rendererList = getRendererNames(NO);
@@ -153,7 +153,20 @@
                   }
               }
             }
-        ], @[
+        ],
+        @[
+            // Network settings
+            @{@"icon": @"network"},
+            @{@"key": @"download_source",
+              @"hasDetail": @YES,
+              @"icon": @"icloud.and.arrow.down",
+              @"type": self.typePickField,
+              @"enableCondition": whenNotInGame,
+              @"pickKeys": @[@"official", @"bmclapi"],
+              @"pickList": @[localize(@"preference.title.download_source-official", nil), localize(@"preference.title.download_source-bmclapi", nil)]
+            },
+        ],
+        @[
             // Video and renderer settings
             @{@"icon": @"video"},
             @{@"key": @"renderer",
