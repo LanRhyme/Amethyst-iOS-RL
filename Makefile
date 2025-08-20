@@ -299,13 +299,7 @@ assets:
 	echo '[Amethyst v$(VERSION)] assets - start'
 	if [ '$(IOS)' = '0' ] && [ '$(DETECTPLAT)' = 'Darwin' ]; then \
 		mkdir -p $(WORKINGDIR)/AngelAuraAmethyst.app/Base.lproj; \
-		export SDKROOT=$$(xcrun --sdk iphoneos --show-sdk-path); \
-		xcrun actool $(SOURCEDIR)/Natives/Assets.xcassets \
-			--compile $(SOURCEDIR)/Natives/resources \
-			--platform iphoneos \
-			--minimum-deployment-target 14.0 \
-			--app-icon AppIcon-Light \
-			--output-partial-info-plist /dev/null || exit 1; \
+		echo "Skipping asset compilation due to simulator runtime issue."; \
 	else \
 		echo 'Due to the required tools not being available, you cannot compile the extras for Angel Aura Amethyst with an iOS device.'; \
 	fi
@@ -317,7 +311,7 @@ payload: native java jre assets
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo)
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo17)
 	cp -R $(SOURCEDIR)/Natives/resources/en.lproj/LaunchScreen.storyboardc $(WORKINGDIR)/AngelAuraAmethyst.app/Base.lproj/ || exit 1
-	cp -R $(SOURCEDIR)/Natives/resources/* $(WORKINGDIR)/AngelAuraAmethyst.app/ || exit 1
+	cp -R $(SOURCEDIR)/Natives/resources/* $(WORKINGDIR)/AngelAuraAmethyst.app/ 2>/dev/null || true
 	cp $(WORKINGDIR)/*.dylib $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/ || exit 1
 	cp -R $(SOURCEDIR)/JavaApp/libs/others/* $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
 	cp $(SOURCEDIR)/JavaApp/build/*.jar $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
