@@ -160,10 +160,37 @@
             @{@"key": @"download_source",
               @"hasDetail": @YES,
               @"icon": @"icloud.and.arrow.down",
-              @"type": self.typePickField,
+              @"type": self.typeButton,
               @"enableCondition": whenNotInGame,
-              @"pickKeys": @[@"official", @"bmclapi"],
-              @"pickList": @[localize(@"preference.title.download_source-official", nil), localize(@"preference.title.download_source-bmclapi", nil)]
+              @"action": ^() {
+                  UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"preference.title.download_source", nil)
+                                                                                 message:localize(@"preference.detail.download_source", nil)
+                                                                          preferredStyle:UIAlertControllerStyleActionSheet];
+
+                  NSArray *keys = @[@"official", @"bmclapi"];
+                  NSArray *list = @[localize(@"preference.title.download_source-official", nil), localize(@"preference.title.download_source-bmclapi", nil)];
+
+                  for (int i = 0; i < keys.count; i++) {
+                      NSString *title = list[i];
+                      NSString *key = keys[i];
+                      [alert addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                          self.setPreference(@"network", @"download_source", key);
+                          [self.tableView reloadData];
+                      }]];
+                  }
+
+                  [alert addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+
+                  UIPopoverPresentationController *popover = alert.popoverPresentationController;
+                  if (popover) {
+                      NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
+                      UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+                      popover.sourceView = cell;
+                      popover.sourceRect = cell.bounds;
+                  }
+
+                  [self presentViewController:alert animated:YES completion:nil];
+              }
             },
         ],
         @[
