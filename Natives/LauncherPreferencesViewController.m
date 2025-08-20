@@ -162,7 +162,7 @@
               @"icon": @"icloud.and.arrow.down",
               @"type": self.typeButton,
               @"enableCondition": whenNotInGame,
-              @"action": ^() {
+              @"action": ^(UITableViewCell *cell) {
                   UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"preference.title.download_source", nil)
                                                                                  message:localize(@"preference.detail.download_source", nil)
                                                                           preferredStyle:UIAlertControllerStyleActionSheet];
@@ -183,8 +183,6 @@
 
                   UIPopoverPresentationController *popover = alert.popoverPresentationController;
                   if (popover) {
-                      NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
-                      UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
                       popover.sourceView = cell;
                       popover.sourceRect = cell.bounds;
                   }
