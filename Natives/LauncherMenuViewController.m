@@ -1,16 +1,13 @@
-#import "authenticator/BaseAuthenticator.h"
-#import "AccountListViewController.h"
+#import "LauncherMenuViewController.h"
 #import "AFNetworking.h"
 #import "ALTServerConnection.h"
 #import "LauncherNavigationController.h"
-#import "LauncherMenuViewController.h"
 #import "LauncherNewsViewController.h"
 #import "LauncherLogAnalyzerViewController.h"
 #import "LauncherPreferences.h"
 #import "LauncherPreferencesViewController.h"
 #import "LauncherProfilesViewController.h"
 #import "PLProfiles.h"
-#import "UIButton+AFNetworking.h"
 #import "UIImageView+AFNetworking.h"
 #import "UIKit+hook.h"
 #import "ios_uikit_bridge.h"
@@ -33,7 +30,6 @@
     LauncherMenuCustomItem *item = [[LauncherMenuCustomItem alloc] init];
     item.title = [vc title];
     item.imageName = [vc imageName];
-    // View controllers are put into an array to keep its state
     item.vcArray = @[vc];
     return item;
 }
@@ -43,17 +39,12 @@
 @interface LauncherMenuViewController()
 @property(nonatomic) NSMutableArray<LauncherMenuCustomItem*> *options;
 @property(nonatomic) UILabel *statusLabel;
-@property(nonatomic) int lastSelectedIndex;
 @end
 
 @implementation LauncherMenuViewController
 
-#define contentNavigationController ((LauncherNavigationController *)self.splitViewController.viewControllers[1])
-
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
-    self.isInitialVc = YES;
     
     UIImageView *titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppLogo"]];
     [titleView setContentMode:UIViewContentModeScaleAspectFit];
@@ -70,23 +61,21 @@
         [self.options addObject:(id)[LauncherMenuCustomItem
                                      title:localize(@"launcher.menu.custom_controls", nil)
                                      imageName:@"MenuCustomControls" action:^{
-            [contentNavigationController performSelector:@selector(enterCustomControls)];
+            [(LauncherNavigationController*)self.navigationController enterCustomControls];
         }]];
     }
     [self.options addObject:
      (id)[LauncherMenuCustomItem
           title:localize(@"launcher.menu.execute_jar", nil)
           imageName:@"MenuInstallJar" action:^{
-        [contentNavigationController performSelector:@selector(enterModInstaller)];
+        [(LauncherNavigationController*)self.navigationController enterModInstaller];
     }]];
     
-    // TODO: Finish log-uploading service integration
     [self.options addObject:
      (id)[LauncherMenuCustomItem
           title:localize(@"login.menu.sendlogs", nil)
           imageName:@"square.and.arrow.up" action:^{
         NSString *latestlogPath = [NSString stringWithFormat:@"file://%s/latestlog.old.txt", getenv("POJAV_HOME")];
-        NSLog(@"Path is %@", latestlogPath);
         UIActivityViewController *activityVC;
         if (realUIIdiom != UIUserInterfaceIdiomTV) {
             activityVC = [[UIActivityViewController alloc]
@@ -99,8 +88,7 @@
              performSelector:@selector(initWithSharingItems:)
              withObject:@[[NSURL URLWithString:latestlogPath]]];
         }
-        activityVC.popoverPresentationController.sourceView = titleView;
-        activityVC.popoverPresentationController.sourceRect = titleView.bounds;
+        activityVC.popoverPresentationController.sourceView = self.view;
         [self presentViewController:activityVC animated:YES completion:nil];
     }]];
     
@@ -127,15 +115,6 @@
     ];
     self.toolbarItems[1].tintColor = UIColor.labelColor;
     
-    // Setup the account button
-    self.accountBtnItem = [self drawAccountButton];
-    
-    [self updateAccountInfo];
-    
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
-    [self.tableView selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionNone];
-    [self tableView:self.tableView didSelectRowAtIndexPath:indexPath];
-    
     if (getEntitlementValue(@"get-task-allow")) {
         [self displayProgress:localize(@"login.jit.checking", nil)];
         if (isJITEnabled(false)) {
@@ -156,34 +135,6 @@
         [alert addAction:okAction];
         [self presentViewController:alert animated:YES completion:nil];
     }
-}
-
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self restoreHighlightedSelection];
-}
-
-- (UIBarButtonItem *)drawAccountButton {
-    if (!self.accountBtnItem) {
-        self.accountButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        [self.accountButton addTarget:self action:@selector(selectAccount:) forControlEvents:UIControlEventPrimaryActionTriggered];
-        self.accountButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-
-        self.accountButton.titleEdgeInsets = UIEdgeInsetsMake(0, 4, 0, -4);
-        self.accountButton.imageView.contentMode = UIViewContentModeScaleAspectFit;
-        self.accountButton.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
-        self.accountBtnItem = [[UIBarButtonItem alloc] initWithCustomView:self.accountButton];
-    }
-
-    [self updateAccountInfo];
-    
-    return self.accountBtnItem;
-}
-
-- (void)restoreHighlightedSelection {
-    // Restore the selected row when the view appears again
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.lastSelectedIndex inSection:0];
-    [self.tableView selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
@@ -218,123 +169,27 @@
             performSelector:@selector(imageName)]];
         cell.imageView.image = [cell.imageView.image _imageWithSize:CGSizeMake(40, 40)];
     }
+    
+    if ([self.options[indexPath.row] vcArray]) {
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    } else {
+        cell.accessoryType = UITableViewCellAccessoryNone;
+    }
+
     return cell;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    
     LauncherMenuCustomItem *selected = self.options[indexPath.row];
     
     if (selected.action != nil) {
-        [self restoreHighlightedSelection];
-        ((LauncherMenuCustomItem *)selected).action();
-    } else {
-        if(self.isInitialVc) {
-            self.isInitialVc = NO;
-        } else {
-            self.options[self.lastSelectedIndex].vcArray = contentNavigationController.viewControllers;
-            [contentNavigationController setViewControllers:selected.vcArray animated:NO];
-            self.lastSelectedIndex = indexPath.row;
-        }
-        selected.vcArray[0].navigationItem.rightBarButtonItem = self.accountBtnItem;
-        selected.vcArray[0].navigationItem.leftBarButtonItem = self.splitViewController.displayModeButtonItem;
-        selected.vcArray[0].navigationItem.leftItemsSupplementBackButton = true;
-    }
-}
-
-- (void)selectAccount:(UIButton *)sender {
-    AccountListViewController *vc = [[AccountListViewController alloc] init];
-    vc.whenDelete = ^void(NSString* name) {
-        if ([name isEqualToString:getPrefObject(@"internal.selected_account")]) {
-            BaseAuthenticator.current = nil;
-            setPrefObject(@"internal.selected_account", @"");
-            [self updateAccountInfo];
-        }
-    };
-    vc.whenItemSelected = ^void() {
-        setPrefObject(@"internal.selected_account", BaseAuthenticator.current.authData[@"username"]);
-        [self updateAccountInfo];
-        if (sender != self.accountButton) {
-            // Called from the play button, so call back to continue
-            [sender sendActionsForControlEvents:UIControlEventPrimaryActionTriggered];
-        }
-    };
-    vc.modalPresentationStyle = UIModalPresentationPopover;
-    vc.preferredContentSize = CGSizeMake(350, 250);
-
-    UIPopoverPresentationController *popoverController = vc.popoverPresentationController;
-    popoverController.sourceView = sender;
-    popoverController.sourceRect = sender.bounds;
-    popoverController.permittedArrowDirections = UIPopoverArrowDirectionAny;
-    popoverController.delegate = vc;
-    [self presentViewController:vc animated:YES completion:nil];
-}
-
-- (void)updateAccountInfo {
-    NSDictionary *selected = BaseAuthenticator.current.authData;
-    CGSize size = CGSizeMake(contentNavigationController.view.frame.size.width, contentNavigationController.view.frame.size.height);
-    
-    if (selected == nil) {
-        if((size.width / 3) > 200) {
-            [self.accountButton setAttributedTitle:[[NSAttributedString alloc] initWithString:localize(@"login.option.select", nil)] forState:UIControlStateNormal];
-        } else {
-            [self.accountButton setAttributedTitle:(NSAttributedString *)@"" forState:UIControlStateNormal];
-        }
-        [self.accountButton setImage:[UIImage imageNamed:@"DefaultAccount"] forState:UIControlStateNormal];
-        [self.accountButton sizeToFit];
-        return;
-    }
-
-    // Remove the prefix "Demo." if there is
-    BOOL isDemo = [selected[@"username"] hasPrefix:@"Demo."];
-    NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:[selected[@"username"] substringFromIndex:(isDemo?5:0)]];
-
-    // Check if we're switching between demo and full mode
-    BOOL shouldUpdateProfiles = (getenv("DEMO_LOCK")!=NULL) != isDemo;
-
-    // Reset states
-    unsetenv("DEMO_LOCK");
-    setenv("POJAV_GAME_DIR", [NSString stringWithFormat:@"%s/Library/Application Support/minecraft", getenv("POJAV_HOME")].UTF8String, 1);
-
-    id subtitle;
-    if (isDemo) {
-        subtitle = localize(@"login.option.demo", nil);
-        setenv("DEMO_LOCK", "1", 1);
-        setenv("POJAV_GAME_DIR", [NSString stringWithFormat:@"%s/.demo", getenv("POJAV_HOME")].UTF8String, 1);
-    } else if (selected[@"xboxGamertag"] == nil) {
-        subtitle = localize(@"login.option.local", nil);
-    } else {
-        // Display the Xbox gamertag for online accounts
-        subtitle = selected[@"xboxGamertag"];
-    }
-
-    subtitle = [[NSAttributedString alloc] initWithString:subtitle attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:12]}];
-    [title appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n" attributes:nil]];
-    [title appendAttributedString:subtitle];
-    
-    if((size.width / 3) > 200) {
-        [self.accountButton setAttributedTitle:title forState:UIControlStateNormal];
-    } else {
-        [self.accountButton setAttributedTitle:(NSAttributedString *)@"" forState:UIControlStateNormal];
-    }
-    
-    // TODO: Add caching mechanism for profile pictures
-    NSURL *url = [NSURL URLWithString:[selected[@"profilePicURL"] stringByReplacingOccurrencesOfString:@"\\/" withString:@"/"]];
-    UIImage *placeholder = [UIImage imageNamed:@"DefaultAccount"];
-    [self.accountButton setImageForState:UIControlStateNormal withURL:url placeholderImage:placeholder];
-    [self.accountButton.imageView setImageWithURL:url placeholderImage:placeholder];
-    [self.accountButton sizeToFit];
-
-    // Update profiles and local version list if needed
-    if (shouldUpdateProfiles) {
-        [contentNavigationController fetchLocalVersionList];
-        [contentNavigationController performSelector:@selector(reloadProfileList)];
-    }
-
-    // Update tableView whenever we have
-    UITableViewController *tableVC = contentNavigationController.viewControllers.lastObject;
-    if ([tableVC isKindOfClass:UITableViewController.class]) {
-        [tableVC.tableView reloadData];
+        selected.action();
+    } else if (selected.vcArray.count > 0) {
+        UIViewController *vc = selected.vcArray[0];
+        [self.navigationController pushViewController:vc animated:YES];
     }
 }
 

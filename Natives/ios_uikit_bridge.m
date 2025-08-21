@@ -4,6 +4,7 @@
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
 #import "LauncherSplitViewController.h"
+#import "RightPanelViewController.h" // Import the new controller
 #import "PLLogOutputView.h"
 #import "SurfaceViewController.h"
 
@@ -146,7 +147,14 @@ void UIKit_returnToSplitView() {
                 window.rootViewController = tmpRootVC;
                 tmpRootVC = nil;
             } else {
-                window.rootViewController = [[LauncherSplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
+                // Recreate the split view controller
+                LauncherSplitViewController *splitViewController = [[LauncherSplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
+                RightPanelViewController *rightPanel = [[RightPanelViewController alloc] init];
+                UINavigationController *rightNav = [[UINavigationController alloc] initWithRootViewController:rightPanel];
+                splitViewController.viewControllers = @[[[LauncherNavigationController alloc] init], rightNav];
+                splitViewController.preferredPrimaryColumnWidthFraction = 0.7;
+                splitViewController.showsSecondaryOnlyButton = YES;
+                window.rootViewController = splitViewController;
             }
             [window makeKeyAndVisible];
         }];
@@ -154,12 +162,12 @@ void UIKit_returnToSplitView() {
 }
 
 void launchInitialViewController(UIWindow *window) {
-    window.rootViewController = [[LauncherSplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
-#if 0
-    if (getPrefBool(@"internal.internal_launch_on_boot")) {
-        window.rootViewController = [[SurfaceViewController alloc] init];
-    } else {
-        window.rootViewController = [[LauncherSplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
-    }
-#endif
+    LauncherSplitViewController *splitViewController = [[LauncherSplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
+    RightPanelViewController *rightPanel = [[RightPanelViewController alloc] init];
+
+    splitViewController.viewControllers = @[[[LauncherNavigationController alloc] init], rightPanel];
+    splitViewController.preferredPrimaryColumnWidthFraction = 0.7;
+    splitViewController.preferredDisplayMode = UISplitViewControllerDisplayModeOneBesideSecondary;
+
+    window.rootViewController = splitViewController;
 }
