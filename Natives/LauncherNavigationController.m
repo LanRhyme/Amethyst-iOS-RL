@@ -21,6 +21,9 @@
 
 static void *ProgressObserverContext = &ProgressObserverContext;
 
+NSMutableArray *localVersionList = nil;
+NSMutableArray *remoteVersionList = nil;
+
 @interface LauncherNavigationController () <UIDocumentPickerDelegate, UIPopoverPresentationControllerDelegate>
 
 @property(nonatomic) MinecraftResourceDownloadTask* task;
