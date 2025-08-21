@@ -11,7 +11,11 @@ TARGETS := $(TARGETS:$(SOURCEDIR)/%=$(OUTPUTDIR)/%.jar)
 # Add all jars to classpath and allow compiling with private API
 JCFLAGS := -cp "$(subst $() $(),:,$(wildcard $(SOURCEDIR)/*/):$(wildcard libs/*/*.jar))" -XDignore.symbol.file
 
-all: $(TARGETS)
+all: | $(OUTPUTDIR) $(TARGETS)
+
+# 保证 build 目录始终存在
+$(OUTPUTDIR):
+	@mkdir -p $(OUTPUTDIR)
 
 # Rules for building java class
 $(CLASSES): $(OUTPUTDIR)/%.class: $(SOURCEDIR)/%.java
