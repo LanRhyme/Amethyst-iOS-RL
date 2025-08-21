@@ -8,10 +8,9 @@
 #import "LauncherMenuViewController.h"
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
+#import "LauncherProfilesViewController.h"
 #import "MinecraftResourceDownloadTask.h"
 #import "MinecraftResourceUtils.h"
-#import "PickTextField.h"
-#import "PLPickerView.h"
 #import "PLProfiles.h"
 #import "UIKit+AFNetworking.h"
 #import "UIKit+hook.h"
@@ -20,19 +19,53 @@
 
 #include <sys/time.h>
 
-#define AUTORESIZE_MASKS UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin
-
 static void *ProgressObserverContext = &ProgressObserverContext;
 
-@interface LauncherNavigationController () <UIDocumentPickerDelegate, UIPickerViewDataSource, PLPickerViewDelegate, UIPopoverPresentationControllerDelegate> {
-}
+@interface LauncherNavigationController () <UIDocumentPickerDelegate, UIPopoverPresentationControllerDelegate>
 
 @property(nonatomic) MinecraftResourceDownloadTask* task;
 @property(nonatomic) DownloadProgressViewController* progressVC;
 
+- (void)invokeAfterJITEnabled:(void(^)(void))handler;
+
 @end
 
 @implementation LauncherNavigationController
+
+- (void)invokeAfterJITEnabled:(void(^)(void))handler {
+    localVersionList = remoteVersionList = nil;
+    BOOL hasTrollStoreJIT = getEntitlementValue(@"com.apple.private.local.sandboxed-jit");
+
+    if (isJITEnabled(false)) {
+        [ALTServerManager.sharedManager stopDiscovering];
+        handler();
+        return;
+    } else if (hasTrollStoreJIT) {
+        NSURL *jitURL = [NSURL URLWithString:[NSString stringWithFormat:@"apple-magnifier://enable-jit?bundle-id=%@", NSBundle.mainBundle.bundleIdentifier]];
+        [UIApplication.sharedApplication openURL:jitURL options:@{} completionHandler:nil];
+    } else if (getPrefBool(@"debug.debug_skip_wait_jit")) {
+        NSLog(@"Debug option skipped waiting for JIT. Java might not work.");
+        handler();
+        return;
+    }
+
+    self.progressText.text = localize(@"launcher.wait_jit.title", nil);
+
+    UIAlertController* alert = [UIAlertController alertControllerWithTitle:localize(@"launcher.wait_jit.title", nil)
+        message:hasTrollStoreJIT ? localize(@"launcher.wait_jit_trollstore.message", nil) : localize(@"launcher.wait_jit.message", nil)
+        preferredStyle:UIAlertControllerStyleAlert];
+
+    [self presentViewController:alert animated:YES completion:nil];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        while (!isJITEnabled(false)) {
+            usleep(1000*200);
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [alert dismissViewControllerAnimated:YES completion:handler];
+        });
+    });
+}
 
 - (void)viewDidLoad
 {
@@ -55,7 +88,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 
     self.progressText = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 44)];
     self.progressText.adjustsFontSizeToFitWidth = YES;
-    self.progressText.autoresizingMask = AUTORESIZE_MASKS;
+    self.progressText.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
     self.progressText.font = [self.progressText.font fontWithSize:16];
     self.progressText.textAlignment = NSTextAlignmentCenter;
     self.progressText.userInteractionEnabled = NO;
@@ -68,7 +101,6 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         object:nil];
 
     if ([BaseAuthenticator.current isKindOfClass:MicrosoftAuthenticator.class]) {
-        // Perform token refreshment on startup
         [self setInteractionEnabled:NO forDownloading:NO];
         id callback = ^(NSString* status, BOOL success) {
             self.progressText.text = status;
@@ -127,7 +159,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         self.progressViewMain.progress = progress.fractionCompleted;
     } success:^(NSURLSessionTask *task, NSDictionary *responseObject) {
         [remoteVersionList addObjectsFromArray:responseObject[@"versions"]];
-        NSDebugLog(@"[VersionList] Got %d versions", remoteVersionList.count);
+        NSDebugLog(@"[VersionList] Got %lu versions", (unsigned long)remoteVersionList.count);
         setPrefObject(@"internal.latest_version", responseObject[@"latest"]);
     } failure:^(NSURLSessionTask *operation, NSError *error) {
         NSDebugLog(@"[VersionList] Warning: Unable to fetch version list: %@", error.localizedDescription);
@@ -181,14 +213,12 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 
 - (void)launchMinecraft:(UIButton *)sender {
     if (PLProfiles.current.selectedProfileName == nil) {
-        // This should not happen, but just in case
         LauncherProfilesViewController *pvc = [LauncherProfilesViewController new];
         [self pushViewController:pvc animated:YES];
         return;
     }
 
     if (BaseAuthenticator.current == nil) {
-        // This is handled in RightPanelViewController, but as a fallback:
         [[NSNotificationCenter defaultCenter] postNotificationName:@"ShowAccountSelector" object:sender];
         return;
     }
@@ -231,9 +261,80 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         return;
     }
 
-    // ... (rest of the method is unchanged)
+    static CGFloat lastMsTime;
+    static NSUInteger lastSecTime, lastCompletedUnitCount;
+    NSProgress *progress = self.task.textProgress;
+    struct timeval tv;
+    gettimeofday(&tv, NULL); 
+    NSInteger completedUnitCount = self.task.progress.totalUnitCount * self.task.progress.fractionCompleted;
+    progress.completedUnitCount = completedUnitCount;
+    if (lastSecTime < tv.tv_sec) {
+        CGFloat currentTime = tv.tv_sec + tv.tv_usec / 1000000.0;
+        NSInteger throughput = (completedUnitCount - lastCompletedUnitCount) / (currentTime - lastMsTime);
+        progress.throughput = @(throughput);
+        progress.estimatedTimeRemaining = @((progress.totalUnitCount - completedUnitCount) / throughput);
+        lastCompletedUnitCount = completedUnitCount;
+        lastSecTime = tv.tv_sec;
+        lastMsTime = currentTime;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.progressText.text = progress.localizedAdditionalDescription;
+
+        if (!progress.finished) return;
+        if(self.progressVC) {
+            [self.progressVC dismissViewControllerAnimated:NO completion:nil];
+        }
+
+        self.progressViewMain.observedProgress = nil;
+        if (self.task.metadata) {
+            [self invokeAfterJITEnabled:^{
+                UIKit_launchMinecraftSurfaceVC(self.view.window, self.task.metadata);
+            }];
+        } else {
+            [self reloadProfileList];
+        }
+        self.task = nil;
+        [self setInteractionEnabled:YES forDownloading:YES];
+    });
 }
 
-// ... (rest of the file is unchanged)
+- (void)receiveNotification:(NSNotification *)notification {
+    if (![notification.name isEqualToString:@"InstallModpack"]) {
+        return;
+    }
+    [self setInteractionEnabled:NO forDownloading:YES];
+    self.task = [MinecraftResourceDownloadTask new];
+    NSDictionary *userInfo = notification.userInfo;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        __weak LauncherNavigationController *weakSelf = self;
+        self.task.handleError = ^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf setInteractionEnabled:YES forDownloading:NO];
+                weakSelf.task = nil;
+                weakSelf.progressVC = nil;
+            });
+        };
+        [self.task downloadModpackFromAPI:notification.object detail:userInfo[@"detail"] atIndex:[userInfo[@"index"] unsignedLongValue]];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.progressViewMain.observedProgress = self.task.progress;
+            [self.task.progress addObserver:self
+                forKeyPath:@"fractionCompleted"
+                options:NSKeyValueObservingOptionInitial
+                context:ProgressObserverContext];
+        });
+    });
+}
+
+#pragma mark - UIPopoverPresentationControllerDelegate
+- (UIModalPresentationStyle)adaptivePresentationStyleForPresentationController:(UIPresentationController *)controller traitCollection:(UITraitCollection *)traitCollection {
+    return UIModalPresentationNone;
+}
+
+#pragma mark - View controller UI mode
+
+- (BOOL)prefersHomeIndicatorAutoHidden {
+    return YES;
+}
 
 @end
