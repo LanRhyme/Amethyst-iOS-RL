@@ -49,12 +49,22 @@
     return self.helpBtn;
 }
 
+- (UIBarButtonItem *)drawAccountButton {
+    UIBarButtonItem *accountButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"AccountIcon"] style:UIBarButtonItemStylePlain target:self action:@selector(showAccountList)];
+    return accountButton;
+}
+
+- (void)showAccountList {
+    UIViewController *vc = [[NSClassFromString(@"AccountListViewController") alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
     // Put navigation buttons back in place if we're first of the navigation controller
     if (self.hasDetail && self.navigationController) {
-        self.navigationItem.rightBarButtonItems = @[[sidebarViewController drawAccountButton], [self drawHelpButton]];
+        self.navigationItem.rightBarButtonItems = @[[self drawAccountButton], [self drawHelpButton]];
     }
 
     // Scan for child pane cells and reload them
