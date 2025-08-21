@@ -55,8 +55,13 @@ UIEdgeInsets insets;
     }
 
     self.navigationItem.leftBarButtonItem = self.splitViewController.displayModeButtonItem;
-    self.navigationItem.rightBarButtonItem = [sidebarViewController drawAccountButton];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"AccountIcon"] style:UIBarButtonItemStylePlain target:self action:@selector(showAccountList)];
     self.navigationItem.leftItemsSupplementBackButton = true;
+}
+
+- (void)showAccountList {
+    UIViewController *vc = [[NSClassFromString(@"AccountListViewController") alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 -(void)showWarningAlert:(NSString *)key hasPreference:(BOOL)isPreferenced exitWhenCompleted:(BOOL)shouldExit {
