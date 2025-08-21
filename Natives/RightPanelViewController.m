@@ -7,6 +7,7 @@
 #import "UIButton+AFNetworking.h"
 #import "UIImageView+AFNetworking.h"
 #import "utils.h"
+#import "LauncherPreferences.h"
 
 @interface RightPanelViewController ()
 
@@ -155,7 +156,7 @@
 - (void)selectAccount:(UIButton *)sender {
     AccountListViewController *vc = [[AccountListViewController alloc] init];
     vc.whenDelete = ^void(NSString* name) {
-        if ([name isEqualToString:getPrefObject(@"internal.selected_account")]) {
+        if ([name isEqualToString:(NSString *)getPrefObject(@"internal.selected_account")]) {
             BaseAuthenticator.current = nil;
             setPrefObject(@"internal.selected_account", @"");
             [self updateAccountInfo];
