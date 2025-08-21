@@ -85,12 +85,18 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
     [super viewWillAppear:animated];
 
     // Put navigation buttons back in place
-    self.navigationItem.rightBarButtonItems = @[[sidebarViewController drawAccountButton], self.createButtonItem];
+    UIBarButtonItem *accountButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"AccountIcon"] style:UIBarButtonItemStylePlain target:self action:@selector(showAccountList)];
+    self.navigationItem.rightBarButtonItems = @[accountButton, self.createButtonItem];
 
     // Pickup changes made in the profile editor and switching instance
     [PLProfiles updateCurrent];
     [self.tableView reloadData];
     [self.navigationController performSelector:@selector(reloadProfileList)];
+}
+
+- (void)showAccountList {
+    UIViewController *vc = [[NSClassFromString(@"AccountListViewController") alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 - (void)actionTogglePrefIsolation:(UISwitch *)sender {
